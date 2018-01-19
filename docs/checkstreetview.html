@@ -1,0 +1,76 @@
+<html>
+<head>
+<title>ストリートビューチェッカー</title>
+<meta name="keywords" content="ingress,ポータル申請,ストリートビュー,イングレス,OperationPortalRecon">
+<meta charset="utf-8">
+    <style>
+      /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+      #map, #result {
+        height: 90%;
+        width: 100%;
+      }
+      </style>
+</head>
+<body>
+<div id="map" style="width:100%;height90%"></div>
+<div id="fotter" style="width:100%;height:10%"><button onclick="check()">チェック</button></div>
+</body>
+<script type=text/javascript>
+var service;
+var map;
+var delay = null;
+var centerObj = [];
+
+function initMap() {
+	// マップの初期化
+	service = new google.maps.StreetViewService();
+	map = new google.maps.Map(document.getElementById('map'), {zoom: 15, center:{lat:35.491203, lng:139.834831}});
+
+	map.addListener('center_changed', function(e) {
+		if (map.getStreetView().getVisible()) {return;}
+		if (delay != null) {
+			clearTimeout(delay);
+		}
+		delay = setTimeout(function() {
+			for (key in centerObj) {
+				centerObj[key].setMap(null);
+			}
+			centerObj = [];
+			// 距離を示す円を描画
+			centerObj.push(new google.maps.Circle({
+			map: map, center: map.getCenter(), radius: 20,
+			fillColor: '#ffff00', fillOpacity: 0.1,
+			strokeColor: '#ffff00', strokeOpacity: 1, strokeWeight: 1
+			}));
+			centerObj.push(new google.maps.Circle({
+			center: map.getCenter(), map: map, radius: 30,
+			fillColor: '#ff0000', fillOpacity: 0.1,
+			strokeColor: '#ff0000', strokeOpacity: 1, strokeWeight: 1
+			}));
+			centerObj.push(new google.maps.Marker({position: map.getCenter(),map: map}));
+		}, 100);
+	});
+
+	// 現在位置の取得
+	navigator.geolocation.getCurrentPosition(function(p) {
+		var crd = p.coords;
+		map.setCenter({lat:crd.latitude, lng:crd.longitude});
+	}, function(){});
+}
+
+function check() {
+	service.getPanorama({location:map.getCenter()}, function(data, status) {
+		if (status == google.maps.StreetViewStatus.OK) {
+			var pano = map.getStreetView();
+			pano.setPosition(map.getCenter());
+			pano.setPov({heading: google.maps.geometry.spherical.computeHeading(map.getCenter(), data.location.latLng)});
+			pano.setVisible(true);
+		} else {
+			alert("近くにストリートビューが見つかりません");
+		}
+	});	
+}
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCWpLmcjKL0hR3pLgEd9NSi_ZqArwGz2sY&callback=initMap&libraries=geometry" async defer></script>
+</html>
